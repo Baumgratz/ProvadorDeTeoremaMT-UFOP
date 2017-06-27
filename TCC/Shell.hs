@@ -109,6 +109,20 @@ preProvar :: String -> IO (String, Prova)
 preProvar s = do
    cont <- provar s []
    return cont
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+evalProva :: Contexto -> Prova -> (Contexto, Prova)
+evalProva c []             = (c,[])
+evalProva c ((Imp a b):xs) = evalProva (c ++ [Lit a]) (b:xs)
+   where
+      (x,y) = evalProva c xs
+evalProva c (x:xs) = (i, x:j)
+   where
+      (i,j) = evalProva c xs
+
+analiseProvar :: Contexto -> Prova -> IO (Contexto, Prova)
+analiseProvar c p  = return $ evalProva c p
 
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
