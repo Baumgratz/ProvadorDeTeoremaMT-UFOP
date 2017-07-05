@@ -23,9 +23,6 @@ instance Show Teorema where
 type Contexto = [(Teorema, Type)]
 type Prova = [(Teorema, Type)]
 
--- libanycurse
--- ReadLine
--- colocar tipo
 -- poder colocar nome
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
