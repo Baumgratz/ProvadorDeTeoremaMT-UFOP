@@ -14,7 +14,7 @@ instance Show TermInf where
    show (Pi t1 t2) = (show t1) ++ " => " ++ (show t2) -- tipo a -> a?
    show (Bound i)  = show i
    show (Free n)   = show n
-   show (a :@: b)  = (show a) ++ " <> " ++ (show b)
+   show (a :@: b)  = "(" ++ (show a) ++ ") <> " ++ (show b)
 
 data TermCheck = Inf TermInf -- Inferindo
                | Lam TermCheck -- lambda

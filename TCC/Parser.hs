@@ -1,13 +1,40 @@
-module Ler where
+module Parser where
 
 import System.Console.Readline
+import Text.Parsec
 import Control.Monad.Except
 import TermType
-import TermType
-import EvalTerm
-import EvalType
+import Text.Parsec.String
+import Text.Parsec.Char
 import Quote
 
+varfree :: String -> TermInf
+varfree s = Free $ Global s
+
+name :: Parser String
+name = many1 (alphaNum <|> oneOf "!@#$%*")
+
+termName :: Parser TermInf
+termName = many1 (alphaNum <|> oneOf "!@#$%*") >>= (return.varfree)
+
+
+app1 :: Parser TermInf
+app1 =  do xs <- many1 (termName >>= (\r -> spaces >> return r))
+           return (foldl (\ x y -> x :@: (Inf y)) (head xs) (tail xs) )
+
+app :: Parser TermInf
+app = do
+        n <- name
+        app' $ varfree n
+
+app' :: TermInf -> Parser TermInf
+app' s = try(do
+            space
+            n <- name
+            app' $ s :@: (Inf (varfree n))
+        )<|>(return s)
+
+{-
 cut' :: Eq a => [a] -> a -> [a] -> ([a], [a])
 cut' [] _ s = (s,[])
 cut' (x:xs) c s
@@ -70,4 +97,4 @@ par2string (x:y:xs) c s
    | otherwise = par2string (y:xs) c (s++[x])
       where
          (a, t) = par2string (y:xs) c ""
-         b = string2term a c ""
+         b = string2term a c "" -}
