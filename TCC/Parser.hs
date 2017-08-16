@@ -8,14 +8,8 @@ type LParser = Parsec String [(String, Int)]
 
 free x = Inf $ Free $ Global x
 
-updateD :: String ->  [(String, Int)]  ->  [(String, Int)]
-updateD s [] = []
-updateD s ((v,n):xs)
-   | s == v = map (\(a,b) -> (a,b-1)) xs
-   | otherwise = (v,n-1):updateD s xs
-
-updateD' :: [(String, Int)] -> [(String, Int)]
-updateD' (a:xs) = map (\(a,b) -> (a,b-1)) xs
+updateD :: [(String, Int)] -> [(String, Int)]
+updateD (a:xs) = map (\(a,b) -> (a,b-1)) xs
 
 updateU :: String ->  [(String, Int)]  ->  [(String, Int)]
 updateU s [] = [(s,0)]
@@ -115,7 +109,7 @@ lam = spaces >> (try(
          spaces
          char '.'
          l <- lam
-         modifyState (updateD')
+         modifyState (updateD)
          return (Lam l)
       )<|>
       (app >>= return.Inf)
