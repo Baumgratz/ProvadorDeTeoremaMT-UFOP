@@ -1,100 +1,150 @@
 module Parser where
 
-import System.Console.Readline
-import Text.Parsec
-import Control.Monad.Except
+-- import System.Console.Readline
 import TermType
-import Text.Parsec.String
-import Text.Parsec.Char
 import Quote
+import Text.Parsec
+import EvalType
+import EvalTerm
+-- import Control.Monad.Except
+--import Text.Parsec.String
+--import Text.Parsec
+
+type LParser = Parsec String [(String, Int)]
+
+free x = Inf $ Free $ Global x
+
+updateD :: String ->  [(String, Int)]  ->  [(String, Int)]
+updateD s [] = []
+updateD s ((v,n):xs)
+   | s == v = map (\(a,b) -> (a,b-1)) xs
+   | otherwise = (v,n-1):updateD s xs
+
+updateD' :: [(String, Int)] -> [(String, Int)]
+updateD' (a:xs) = map (\(a,b) -> (a,b-1)) xs
+
+updateU :: String ->  [(String, Int)]  ->  [(String, Int)]
+updateU s [] = [(s,0)]
+updateU s ys@((_,n):xs) = (s,0):(map (\(x,y) -> (x,y+1)) ys)
 
 varfree :: String -> TermInf
 varfree s = Free $ Global s
 
-name :: Parser String
-name = many1 (alphaNum <|> oneOf "!@#$%*")
+addTipo :: TermInf -> TermInf -> TermInf
+addTipo (Free (Global x)) s = Pi (Inf (varfree x)) (Inf s)
+addTipo (Pi a b@(Inf (Free _))) s = Pi a $ Inf $ Pi b (Inf s)
+addTipo (Pi a (Inf b)) s = Pi a $ Inf $ addTipo b s
 
-termName :: Parser TermInf
-termName = many1 (alphaNum <|> oneOf "!@#$%*") >>= (return.varfree)
+parensT :: LParser TermInf
+parensT = spaces >> (
+         do char '('
+            t1 <- tipo
+            spaces
+            char ')'
+            parensT' t1
+         )
+
+parensT' :: TermInf -> LParser TermInf
+parensT' t1 = spaces >> (try(
+              do string "->"
+                 t2 <- tipo
+                 return (Pi (Inf t1) (Inf t2))
+             )<|>(return t1)
+             )
+
+tipo :: LParser TermInf
+tipo = spaces >> (try(
+       do x <- many1 (alphaNum <|> oneOf "!@#$%*")
+          tipo' (varfree x)
+       )<|>
+       (do p <- parensT
+           tipo' p)
+       )
+
+tipo' :: TermInf -> LParser TermInf
+tipo' s = spaces >> (try(
+          do string "->"
+             spaces
+             x <- many1 (alphaNum <|> oneOf "!@#$%*")
+             tipo' (addTipo s (varfree x))
+          )<|>
+          try(
+           do string "->"
+              p <- parensT
+              tipo' (addTipo s p)
+           )<|>
+          (return s)
+          )
+
+parserI :: LParser TermInf
+parserI = do l <- lam
+             spaces
+             string "::"
+             t <- tipo
+             return (Ann l (Inf t))
+
+app :: LParser TermInf
+app = spaces >> (try(
+      do xs <- termName
+         app' xs
+      )<|>try(
+      do p <- parens app
+         app' p
+      )<|>(
+      do p <- parens parserI
+         app' p
+      )
+      )
 
 
-app1 :: Parser TermInf
-app1 =  do xs <- many1 (termName >>= (\r -> spaces >> return r))
-           return (foldl (\ x y -> x :@: (Inf y)) (head xs) (tail xs) )
+app' :: TermInf -> LParser TermInf
+app' t = spaces >> (try(
+         do xs <- termName
+            app' (t :@: Inf xs)
+         )<|>
+         try(do l <- lam
+                app' (t :@: l)
+         )
+         <|>
+         try(do p <- parens lam
+                app' (t :@: p)
+         )
+         <|>(return t)
+         )
 
-app :: Parser TermInf
-app = do
-        n <- name
-        app' $ varfree n
+lam :: LParser TermCheck
+lam = spaces >> (try(
+      do char '\\'
+         spaces
+         n <- many1 (alphaNum <|> oneOf "!@#$%*")
+         modifyState (updateU n)
+         spaces
+         char '.'
+         l <- lam
+         modifyState (updateD')
+         return (Lam l)
+      )<|>
+      (app >>= return.Inf)
+      )
 
-app' :: TermInf -> Parser TermInf
-app' s = try(do
-            space
-            n <- name
-            app' $ s :@: (Inf (varfree n))
-        )<|>(return s)
+parens :: LParser a -> LParser a
+parens t = spaces >> (
+            do char '('
+               p <- t
+               spaces
+               char ')'
+               return p
+           )
 
-{-
-cut' :: Eq a => [a] -> a -> [a] -> ([a], [a])
-cut' [] _ s = (s,[])
-cut' (x:xs) c s
-   | x == c = (s,xs)
-   | otherwise = cut' xs c (s ++ [x])
+start :: LParser TermCheck
+start = spaces >> (lam)
 
-cut :: Eq a => [a] -> a -> ([a], [a])
-cut s s' = cut' s s' []
+termName :: LParser TermInf
+termName = do s <- many1 (alphaNum <|> oneOf "!@#$%*")
+              t <- getState
+              case lookup s t of
+                 Just i  -> (return (Bound i))
+                 Nothing -> (return $ varfree s)
 
-pos' :: Eq a => Int -> a -> [a] -> Result Int
-pos' n _ [] = throwError "Nao e uma variavel do lambda"
-pos' n a (x:xs)
-   | a == x = Right n
-   | otherwise = pos' (n+1) a xs
-
-pos :: Eq a =>  a -> [a] -> Result Int
-pos = pos' 0
-
-ipi :: TermCheck -> TermCheck -> TermCheck
-ipi a b = Inf $ Pi a b
-
-tfree :: String -> Value
-tfree a = VNeutral $ NFree $ Global a
-
-varfree :: String -> TermInf
-varfree s = Free $ Global s
-
-s2term :: String -> String -> [TermCheck]
-s2term [] s = [Inf (Free (Global s))]
-s2term q@(x:xs) s = undefined
-
-----------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------
-
-string2term :: String -> Context -> String -> TermCheck
-string2term [] c s = Inf (varfree s)
-string2term (x:y:xs) c s
-   | x == '\\' = undefined -- lam2term xs c ""
-   | x == '(' && y /= ' '  = Inf $ varfree s :@: p1 :@: b1
-   | x == '(' && y == ' '  = b2
-   | x == ' '  = Inf $ varfree s :@: t
-   | otherwise = string2term (y:xs) c (s++[x])
-      where
-         t = string2term (y:xs) c ""
-         (a1, p1) = par2string xs c ""
-         b1 = string2term a1 c ""
-         (a2, p2) = par2string (y:xs) c ""
-         b2 = string2term a2 c ""
-
-----------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------
-
-par2string :: String -> Context -> String -> (String, TermCheck)
-par2string [] c s = error "Parser errado"
-par2string (x:y:xs) c s
-   | x == '(' = Inf $ varfree s :@: t :@: b
-   | x == ')' && y /= ' ' = (y:xs, Inf (varfree s))
-   | x == ')' && y == ' ' = (xs, Inf (varfree s))
-   | x == ' ' = (a, Inf $ varfree s :@: t)
-   | otherwise = par2string (y:xs) c (s++[x])
-      where
-         (a, t) = par2string (y:xs) c ""
-         b = string2term a c "" -}
+-- runLParser ::  LParser a -> SourceName -> String -> Either ParseError a
+runLParser lparser sn inp = runParserT lparser [] sn inp

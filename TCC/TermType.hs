@@ -9,12 +9,14 @@ data TermInf = Ann TermCheck TermCheck -- termo :: tipo
       deriving (Eq)
 
 instance Show TermInf where
-   show (Ann a b)  = (show a) ++ " :: " ++ (show b)
+   show (Ann a b)  = "[" ++ (show a) ++ " :: " ++ (show b) ++ "]"
    show Star       = "*"
-   show (Pi t1 t2) = (show t1) ++ " => " ++ (show t2) -- tipo a -> a?
    show (Bound i)  = show i
    show (Free n)   = show n
-   show (a :@: b)  = "(" ++ (show a) ++ ") <> " ++ (show b)
+   show (a :@: b@(Inf (_ :@: _)))  = (show a) ++ " <> (" ++ (show b) ++ ")"
+   show (a :@: b)  = (show a) ++ " <> " ++ (show b)
+   show (Pi t1@(Inf (Pi _ _)) t2) = "(" ++ (show t1) ++ ") -> " ++ (show t2) -- tipo a -> a?
+   show (Pi t1 t2) = (show t1) ++ " -> " ++ (show t2) -- tipo a -> a?
 
 data TermCheck = Inf TermInf -- Inferindo
                | Lam TermCheck -- lambda
@@ -22,7 +24,7 @@ data TermCheck = Inf TermInf -- Inferindo
 
 instance Show TermCheck where
    show (Inf t) = (show t)
-   show (Lam a) = "\\. (" ++ (show a) ++ ")"
+   show (Lam a) = "\\." ++ (show a)
 
 data Name = Global String -- nome global
           | Local Int -- nome Local

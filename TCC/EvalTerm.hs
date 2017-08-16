@@ -1,4 +1,4 @@
-module EvalTerm (Env,evalInf, evalCheck) where
+module EvalTerm (Env, evalInf, evalCheck) where
 
 import TermType
 

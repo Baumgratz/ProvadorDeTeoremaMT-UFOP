@@ -1,4 +1,4 @@
-module EvalType where
+module EvalType (typeInf0, typeCheck) where
 
 import Control.Monad.Except
 import Quote
