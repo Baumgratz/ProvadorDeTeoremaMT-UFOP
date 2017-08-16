@@ -1,4 +1,4 @@
-module Parser (run)where
+module Parser (runStart)where
 
 import TermType
 import Text.Parsec
@@ -6,21 +6,20 @@ import Data.Functor.Identity
 
 type LParser = Parsec String [(String, Int)]
 
-free x = Inf $ Free $ Global x
-
 updateD :: [(String, Int)] -> [(String, Int)]
 updateD (a:xs) = map (\(a,b) -> (a,b-1)) xs
 
 updateU :: String ->  [(String, Int)]  ->  [(String, Int)]
-updateU s [] = [(s,0)]
-updateU s ys@((_,n):xs) = (s,0):(map (\(x,y) -> (x,y+1)) ys)
+updateU s ys = (s,0):(map (\(x,y) -> (x,y+1)) ys)
 
 varfree :: String -> TermInf
 varfree s = Free $ Global s
 
 addTipo :: TermInf -> TermInf -> TermInf
 addTipo (Free (Global x)) s = Pi (Inf (varfree x)) (Inf s)
+-- addTipo (Star) s = Pi (Inf Star) (Inf s)
 addTipo (Pi a b@(Inf (Free _))) s = Pi a $ Inf $ Pi b (Inf s)
+-- addTipo (Pi a b@(Inf Star)) s = Pi a $ Inf $ Pi b (Inf s)
 addTipo (Pi a (Inf b)) s = Pi a $ Inf $ addTipo b s
 
 parensT :: LParser TermInf
@@ -42,7 +41,7 @@ parensT' t1 = spaces >> (try(
 
 tipo :: LParser TermInf
 tipo = spaces >> (try(
-       do x <- many1 (alphaNum <|> oneOf "!@#$%*")
+       do x <- many1 (alphaNum <|> oneOf "!@#$%")
           tipo' (varfree x)
        )<|>
        (do p <- parensT
@@ -53,7 +52,7 @@ tipo' :: TermInf -> LParser TermInf
 tipo' s = spaces >> (try(
           do string "->"
              spaces
-             x <- many1 (alphaNum <|> oneOf "!@#$%*")
+             x <- many1 (alphaNum <|> oneOf "!@#$%")
              tipo' (addTipo s (varfree x))
           )<|>
           try(
@@ -65,11 +64,13 @@ tipo' s = spaces >> (try(
           )
 
 parserI :: LParser TermInf
-parserI = do l <- lam
+parserI = spaces >> (
+          do l <- (lam <|> (app >>= return.Inf))
              spaces
              string "::"
              t <- tipo
              return (Ann l (Inf t))
+             )
 
 app :: LParser TermInf
 app = spaces >> (try(
@@ -104,7 +105,7 @@ lam :: LParser TermCheck
 lam = spaces >> (try(
       do char '\\'
          spaces
-         n <- many1 (alphaNum <|> oneOf "!@#$%*")
+         n <- many1 (alphaNum <|> oneOf "!@#$%")
          modifyState (updateU n)
          spaces
          char '.'
@@ -125,17 +126,20 @@ parens t = spaces >> (
            )
 
 start :: LParser TermCheck
-start = spaces >> (lam)
+start = spaces >> (try (parserI>>=return.Inf) <|> lam)
 
 termName :: LParser TermInf
-termName = do s <- many1 (alphaNum <|> oneOf "!@#$%*")
+termName = do s <- many1 (alphaNum <|> oneOf "!@#$%")
               t <- getState
               case lookup s t of
                  Just i  -> (return (Bound i))
                  Nothing -> (return $ varfree s)
 
-runLParser :: LParser a -> SourceName -> String -> Data.Functor.Identity.Identity (Either ParseError a)
-runLParser lparser sn inp = runParserT lparser [] sn inp
+runner :: LParser a -> SourceName -> String -> Either ParseError a
+runner p sn s = runParser p [] sn s
 
-run :: String -> Either ParseError TermCheck
-run s = runIdentity $ runLParser start "" s
+run :: LParser a -> String -> Either ParseError a
+run p s = runner p "" s
+
+runStart :: String -> Either ParseError TermCheck
+runStart = run start
