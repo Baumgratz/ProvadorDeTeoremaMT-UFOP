@@ -1,14 +1,8 @@
-module Parser where
+module Parser (run)where
 
--- import System.Console.Readline
 import TermType
-import Quote
 import Text.Parsec
-import EvalType
-import EvalTerm
--- import Control.Monad.Except
---import Text.Parsec.String
---import Text.Parsec
+import Data.Functor.Identity
 
 type LParser = Parsec String [(String, Int)]
 
@@ -146,5 +140,8 @@ termName = do s <- many1 (alphaNum <|> oneOf "!@#$%*")
                  Just i  -> (return (Bound i))
                  Nothing -> (return $ varfree s)
 
--- runLParser ::  LParser a -> SourceName -> String -> Either ParseError a
+runLParser :: LParser a -> SourceName -> String -> Data.Functor.Identity.Identity (Either ParseError a)
 runLParser lparser sn inp = runParserT lparser [] sn inp
+
+run :: String -> Either ParseError TermCheck
+run s = runIdentity $ runLParser start "" s

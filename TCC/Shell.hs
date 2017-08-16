@@ -3,16 +3,12 @@ module Shell where
 import System.Console.Readline
 import Control.Monad.Except
 import TermType
-import EvalTerm
-import EvalType
-import Quote
+import Parser
 
 readl :: String -> IO String
 readl s = do
    x <- readline s
    return $ maybe (error "Não conseguiu ler o que digitou") id x
-
-
 
 retira' :: String -> String -> String
 retira' []     s      = s
@@ -28,21 +24,27 @@ retira (x:xs) (y:ys)
 ----------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------
 
-loop' :: String -> IO (String,Context)
-loop' s@(x:xs)
+loop' :: String -> ([TermCheck],[TermCheck]) -> IO ([TermCheck],[TermCheck])
+loop' s@(x:xs) b@(g,p)
    | x == 'p' = do
       a <- return $ retira "premissa " s
-      return (a,[])
-   -- | otherwise = return s
+      r <- return $ either (\_-> error "Parser errado") id (run a)
+      x <- readl ""
+      loop' x (g,r:p)
+   | x == 'g' = do
+      a <- return $ retira "goal " s
+      r <- return $ either (\_-> error "Parser errado") id (run a)
+      x <- readl ""
+      loop' x (r:g,p)
+   | otherwise = return b
 
-
-
-loop :: IO (String,Context)
+loop :: IO ([TermCheck],[TermCheck])
 loop = do
    s <- readl ""
-   loop' s
+   loop' s ([],[])
 
 main :: IO ()
 main = do
    x <- loop
+   putStrLn (show x)
    return ()
