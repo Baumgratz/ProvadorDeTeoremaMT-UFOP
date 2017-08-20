@@ -12,10 +12,32 @@ data Term = V Var
           | Fst Term
           | Snd Term
           | TEither Term Term
-      deriving (Show, Eq)
+    deriving (Eq)
+
+instance Show Term where
+  show (V v) = v
+  show (t1 :@: t2@(_ :@: _)) = (show t1) ++ " ( " ++ (show t2) ++ " )"
+  show (t1 :@: t2) = (show t1) ++ " " ++ (show t2)
+  show (te ::: ti) = (show te) ++ " : " ++ (show ti)
+  show (t1 :*: t2) = "( " ++ (show t1) ++ " , " ++ (show t2) ++ " )"
+  show (t1 :+: t2) = "( " ++ (show t1) ++ " | " ++ (show t2) ++ " )"
+  show (LamT v ti te) = "\\(" ++ (show v) ++ "::" ++ (show ti) ++ ". " ++ (show te)
+  show (Lam v te) = "\\(" ++ (show v) ++ ". " ++ (show te)
+  show (Fst t) = show t
+  show (Snd t) = show t
+  show (TEither t1 t2) = (show t1) ++ " or " ++ (show t2)
 
 data Tipo = T Var
           | Tipo :>: Tipo
           | Tipo :&: Tipo
           | Tipo :|: Tipo
-      deriving (Show, Eq)
+          | TFalse
+        deriving (Eq)
+
+instance Show Tipo where
+  show (T v) = v
+  show (t1@(_ :>: _) :>: t2) = "( " ++ (show t1) ++ " ) -> " ++ (show t2)
+  show (t1 :>: t2) = (show t1) ++ " -> " ++ (show t2)
+  show (t1 :&: t2) = "( " ++ (show t1) ++ " , " ++ (show t2) ++ " )"
+  show (t1 :|: t2) = "( " ++ (show t1) ++ " , " ++ (show t2) ++ " )"
+  show TFalse = "False"

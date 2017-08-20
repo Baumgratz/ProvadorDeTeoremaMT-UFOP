@@ -64,6 +64,3 @@ termCont c (t1 :+: t2) = (w,y:+:z)
 termCont c (LamT v s t) = (x,LamT v s y)
   where
      (x,y) = termCont c t
-
-frt :: Term -> Term
-frt ((t1 :*: t2) ::: (ti1 :&: ti2) ) = t1 ::: ti1
