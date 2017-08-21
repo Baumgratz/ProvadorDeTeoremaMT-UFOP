@@ -1,16 +1,16 @@
-module Tipagem where
+module Tipagem (curryTerm,termCont)where
 
 import Term
 import Control.Monad.Except
 
 type Result a = Either String a
 
-type Contexto = [(Var, Tipo)]
+type Contexto = [(String, Tipo)]
 
 curryTerm :: Contexto -> Term -> Result Tipo
 curryTerm c (V v) = case lookup v c of
-                      Just t -> return t
-                      Nothing -> throwError $ (show v) ++ " não esta no contexto"
+                        Just t -> return t
+                        Nothing -> throwError $ (show v) ++ " não esta no contexto"
 curryTerm c (t1 :@: t2) = case curryTerm c t1 of
                             Right (p1 :>: p2) -> do l <- curryTerm c t2
                                                     un (p1 == l) p2 "Tipo errado"
@@ -44,7 +44,7 @@ un b t s
   | otherwise = throwError s
 
 termCont :: Contexto -> Term -> (Contexto, Term)
-termCont c (a@(V v) ::: t) = ((v,t):c,a)
+termCont c a@((V v) ::: t) = ((v,t):c,a)
 termCont c (a@(V _)) = (c,a)
 termCont c (a ::: t) = (x,y:::t)
   where

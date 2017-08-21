@@ -21,8 +21,8 @@ instance Show Term where
   show (te ::: ti) = (show te) ++ " : " ++ (show ti)
   show (t1 :*: t2) = "( " ++ (show t1) ++ " , " ++ (show t2) ++ " )"
   show (t1 :+: t2) = "( " ++ (show t1) ++ " | " ++ (show t2) ++ " )"
-  show (LamT v ti te) = "\\(" ++ (show v) ++ "::" ++ (show ti) ++ ". " ++ (show te)
-  show (Lam v te) = "\\(" ++ (show v) ++ ". " ++ (show te)
+  show (LamT v ti te) = "\\(" ++ v ++ "::" ++ (show ti) ++ "). {" ++ (show te) ++ "}"
+  show (Lam v te) = "\\(" ++ v ++ "). {" ++ (show te) ++ "}"
   show (Fst t) = show t
   show (Snd t) = show t
   show (TEither t1 t2) = (show t1) ++ " or " ++ (show t2)
