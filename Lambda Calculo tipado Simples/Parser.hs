@@ -29,8 +29,8 @@ parensFormula = do spaces
                    return f
 
 caseStr :: String -> String -> String -> Term -> Term -> Tipo -> Tipo -> Term
-caseStr "&" _ _ te1 te2 ti1 ti2 = (te1 :*: te2) ::: (ti1 :&: ti2)
-caseStr "|" _ _ te1 te2 ti1 ti2 = (te1 :+: te2) ::: (ti1 :|: ti2)
+caseStr "&" _ _ te1 te2 ti1 ti2 = ((te1:::ti1) :*: (te2:::ti2)) ::: (ti1 :&: ti2)
+caseStr "|" _ _ te1 te2 ti1 ti2 = ((te1:::ti1) :+: (te2:::ti2)) ::: (ti1 :|: ti2)
 caseStr "->" v _ te1 te2 ti1 ti2 = LamT v ti1 (te2 ::: ti2) ::: (addTipo ti1 ti2)
 caseStr "<->" v1 v2 te1 te2 ti1 ti2 = (caseStr "->" v1 "" te1 te2 ti1 ti2) :*: (caseStr "->" v2 "" te2 te1 ti2 ti1) ::: ((addTipo ti1 ti2) :&: (addTipo ti2 ti1))
 -- caseStr s _ te1 _ _ _ = error $ show te1
