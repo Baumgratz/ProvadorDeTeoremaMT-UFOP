@@ -24,7 +24,7 @@ lit = do spaces
 parensFormula :: PParser Term
 parensFormula = do spaces
                    char '('
-                   f <- formula
+                   (f,_) <- formula
                    char ')'
                    return f
 
@@ -83,14 +83,16 @@ preParensFormula :: PParser Term
 preParensFormula = do f <- parensFormula
                       binOp' f
 
-formula :: PParser Term
+formula :: PParser (Term, Int)
 formula = do  r <- (binOp <|> preOp)
               formula' r
 
-formula' :: Term -> PParser Term
+formula' :: Term -> PParser (Term,Int)
 formula' a = (do r <- (binOp <|> preOp)
                  formula' r)
-             <|> (return a)
+             <|> (
+             do i <- getState
+                return (a,i))
 
-runp :: String -> Either ParseError Term
-runp s = runParser (spaces >> formula) 0 "" s
+runp :: String -> Int -> Either ParseError (Term,Int)
+runp s n = runParser (spaces >> formula) n "" s
