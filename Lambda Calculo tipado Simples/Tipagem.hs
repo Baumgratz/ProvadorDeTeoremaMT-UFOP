@@ -38,6 +38,8 @@ curryTerm c (Snd t) = case curryTerm c t of
                             Right (p1 :&: p2) -> return p2
                             _ -> throwError "TIpo errado"
 
+-- (Snd x) ::: b
+
 un :: Bool -> Tipo -> String -> Result Tipo
 un b t s
   | b = return t
@@ -46,6 +48,12 @@ un b t s
 termCont :: Contexto -> Term -> (Contexto, Term)
 termCont c a@((V v) ::: t) = ((v,t):c,a)
 termCont c (a@(V _)) = (c,a)
+termCont c (Snd a) = (x,Snd y)
+  where
+    (x,y) = termCont c a
+termCont c (Fst a) = (x,Fst y)
+  where
+    (x,y) = termCont c a
 termCont c (a ::: t) = (x,y:::t)
   where
      (x,y) = termCont c a

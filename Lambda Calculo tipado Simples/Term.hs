@@ -2,16 +2,20 @@ module Term where
 
 type Var = String
 
+-- | Term :+: Term
+-- show (t1 :+: t2) = "( " ++ (show t1) ++ " | " ++ (show t2) ++ " )"
 data Term = V Var
           | Term :@: Term
           | Term ::: Tipo
           | Term :*: Term
-          | Term :+: Term
           | Lam Var Term
           | LamT Var Tipo Term
           | Fst Term
           | Snd Term
-          | TEither Term (Term -> Term) (Term -> Term)
+          | TLeft Term
+          | TRight Term
+          | TEither Term Term Term
+          | Term :+: Term
 
 instance Show Term where
   show (V v) = v
@@ -19,11 +23,13 @@ instance Show Term where
   show (t1 :@: t2) = (show t1) ++ " " ++ (show t2)
   show (te ::: ti) = (show te) ++ " : " ++ (show ti)
   show (t1 :*: t2) = "( " ++ (show t1) ++ " , " ++ (show t2) ++ " )"
-  show (t1 :+: t2) = "( " ++ (show t1) ++ " | " ++ (show t2) ++ " )"
   show (LamT v ti te) = "\\(" ++ v ++ "::" ++ (show ti) ++ "). {" ++ (show te) ++ "}"
   show (Lam v te) = "\\(" ++ v ++ "). {" ++ (show te) ++ "}"
-  show (Fst t) = show t
-  show (Snd t) = show t
+  show (Fst t) = "FST" ++ (show t)
+  show (Snd t) = "SND (" ++ (show t) ++ ")"
+  show (TLeft t) = "FST" ++ (show t)
+  show (TRight t) = "SND (" ++ (show t) ++ ")"
+  show (t1 :+: t2) = "( " ++ (show t1) ++ " | " ++ (show t2) ++ " )"
 
 instance Eq Term where
   (V v) == (V v1) = v == v1
