@@ -28,16 +28,6 @@ parensFormula = do spaces
                    char ')'
                    return f
 
-caseStr :: String -> String -> String -> Term -> Term -> Tipo -> Tipo -> Term
-caseStr "&" _ _ te1 te2 ti1 ti2 = ((te1:::ti1) :*: (te2:::ti2)) ::: (ti1 :&: ti2)
-caseStr "|" _ _ te1 te2 ti1 ti2 = ((te1:::ti1) :+: (te2:::ti2)) ::: (ti1 :|: ti2)
-caseStr "->" v _ te1 te2 ti1 ti2 = LamT v ti1 (te2 ::: ti2) ::: (addTipo ti1 ti2)
-caseStr "<->" v1 v2 te1 te2 ti1 ti2 = (caseStr "->" v1 "" te1 te2 ti1 ti2) :*: (caseStr "->" v2 "" te2 te1 ti2 ti1) ::: ((addTipo ti1 ti2) :&: (addTipo ti2 ti1))
--- caseStr s _ te1 _ _ _ = error $ show te1
-
-caseTerm :: String -> String -> String -> Term -> Term -> Term
-caseTerm s v1 v2 (te1 ::: ti1) (te2 ::: ti2) = caseStr s v1 v2 te1 te2 ti1 ti2
-
 preOp :: PParser Term
 preOp = lit <|>
         parensFormula
@@ -48,36 +38,29 @@ binOp = do f <- preOp
            binOp' f
 
 binOp' :: Term -> PParser Term
-binOp' t = (do string "&"
-               spaces
-               f <- preOp
-               spaces
-               binOp' $ caseTerm "&" "" "" t f
-           )<|>
-           (do string "|"
-               spaces
-               f <- preOp
-               spaces
-
-               binOp' $ caseTerm "|" "" "" t f
-           )<|>(binOp'' t)
+binOp' t@(te1:::ti1) = (do string "&"
+                           spaces
+                           f@(te2:::ti2) <- preOp
+                           spaces
+                           x <- get
+                           binOp' $ (t :*: f) ::: (ti1 :&: ti2)
+                       )<|>
+                       (do string "|"
+                           spaces
+                           (_:::ti2) <- preOp
+                           spaces
+                           x <- get
+                           binOp' $ (V x) ::: (ti1 :|: ti2)
+                       )<|>(binOp'' t)
 
 binOp'' :: Term -> PParser Term
-binOp'' t = (do string "->"
-                spaces
-                f <- binOp
-                x <- get
-                spaces
-                binOp' $ caseTerm "->" x "" t f
-            )<|>
-            (do string "<->"
-                spaces
-                f <- binOp
-                spaces
-                x <- get
-                y <- get
-                binOp' $ caseTerm "<->" x y t f
-            )<|>(return t)
+binOp'' t@(te1:::ti1) = (do string "->"
+                            spaces
+                            f@(_:::ti2) <- binOp
+                            x <- get
+                            spaces
+                            binOp' $ (LamT x ti1 f) ::: (addTipo ti1 ti2)
+                        )<|>(return t)
 
 preParensFormula :: PParser Term
 preParensFormula = do f <- parensFormula

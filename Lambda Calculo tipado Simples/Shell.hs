@@ -9,8 +9,10 @@ type Objetivo = Tipo
 type Provas = [Term]
 type Result a = Either String a
 type Contexto = [(Var, Tipo)]
-type Suponha = [Term]
-type State = (Int, Provas, Objetivo, Int, Contexto, Suponha)
+type Suponha = [(Tipo, Var)]
+type SeqCounter = Int
+type VarCounter = Int
+type State = (SeqCounter, Provas, Objetivo, VarCounter, Contexto, Suponha)
 
 premissa :: State -> IO (State)
 premissa s@(np,pre,obj,pst,ctx,sup)
@@ -73,7 +75,42 @@ elimE 2 p ys s@(np,pre,obj,pst,ctx,sup) = do  tipo <- newTipo ys
                                                         Left _ -> putStrLn "Não é possivel reduzir para o termo desejado." >> return s
 
 elimI :: Int -> Int -> String -> State -> IO State
-elimI p1 p2 ys s@(np,pre,obj,pst,ctx,sup) = undefined
+elimI p1 p2 ys s@(np,pre,obj,pst,ctx,sup) = do tipo <- newTipo ys
+                                               case tipo of
+                                                 TFalse -> return s
+                                                 ti -> case curryTerm ctx (t1 :@: t2 ::: (ti)) of
+                                                         Right _ -> return (np+1, pre ++[t1 :@: t2 ::: (ti)],obj,pst,ctx,sup)
+                                                         Left a -> putStrLn (show a) >> return s--putStrLn "Não é possivel reduzir para o termo desejado." >> return s
+  where
+    t1 = pre !! (p1-1)
+    t2 = pre !! (p2-1)
+
+intrO :: Int -> Int -> String -> State -> IO State
+intrO 1 p ys s@(np,pre,obj,pst,ctx,sup) = do tipo <- newTipo ys
+                                             case tipo of
+                                                TFalse -> return s
+                                                ti -> case curryTerm ctx (TLeft t  ::: (ti)) of
+                                                        Right _ -> return (np+1, pre ++[TLeft t ::: ti],obj,pst,ctx,sup)
+                                                        Left _ -> putStrLn "Não é possivel reduzir para o termo desejado." >> return s
+  where
+    t = pre !! (p-1)
+intrO 2 p ys s@(np,pre,obj,pst,ctx,sup) = do tipo <- newTipo ys
+                                             case tipo of
+                                                TFalse -> return s
+                                                ti -> case curryTerm ctx (TRight t  ::: ti) of
+                                                        Right _ -> return (np+1, pre ++[TRight t ::: ti],obj,pst,ctx,sup)
+                                                        Left _ -> putStrLn "Não é possivel reduzir para o termo desejado." >> return s
+  where
+    t = pre !! (p-1)
+
+
+intrI :: Int -> String -> State -> IO State
+intrI p ys s@(np,pre,obj,pst,ctx,sup) = do tipo <- newTipo ys
+                                           case tipo of
+                                             (t1 :>: t2) -> case lookup t1 sup of
+                                                              Just i -> undefined
+                                                              Nothing -> putStrLn "Tipo errado" >> return s
+                                             _ -> putStrLn "Tipo errado" >> return s
 
 process :: State -> IO (State)
 process s@(np,pre,obj,pst,ctx,sup) = do putStr $(show np) ++ ":"
@@ -83,9 +120,13 @@ process s@(np,pre,obj,pst,ctx,sup) = do putStr $(show np) ++ ":"
                                           "cqe":xs -> fim obj (last pre) s
                                           "E&e":t:"=>":ti -> (elimE 1 (int t) (unwords ti) s) >>= (\s -> process s)
                                           "E&d":t:"=>":ti -> (elimE 2 (int t) (unwords ti) s) >>= (\s -> process s)
-                                          "Suponha:":t -> either (\_ -> putStrLn "Termo inválido. Digite um termo correto." >> return s)
-                                                                 (\(trm,nwpst) -> return (np,pre, obj, nwpst, ctx,sup++[trm]) )
+                                          "Suponha:":t -> either (\_ -> putStrLn "Termo invalido. Digite um termo correto." >> process s)
+                                                                 (\(trm,nwpst) -> return (termCont [] trm) >>= (\(c,_) -> process (np,pre, obj, nwpst, ctx,sup++(map (\(a,b) -> (b,a) )c)) ))
                                                                  (runp (unwords t) pst)
+                                          "E->":t1:t2:"=>":ti -> elimI (int t1) (int t2) (unwords ti) s >>= (\s -> process s)
+                                          "I|e":t:"=>":ti -> intrO 1 (int t) (unwords ti) s >>= (\s -> process s)
+                                          "I|d":t:"=>":ti -> intrO 2 (int t) (unwords ti) s >>= (\s -> process s)
+                                          "I->":t:"=>":ti -> intrI (int t) (unwords ti) s >>= (\s -> process s)
 
 main :: IO ()
 main = do s <- premissa (1,[],error "Sem objetivo",0,[],[])
