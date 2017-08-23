@@ -30,7 +30,7 @@ preCont :: Provas -> Contexto
 preCont [] = []
 preCont (x:xs) = c ++ preCont xs
   where
-    (c,_) = termCont [] x
+    c = termCont [] x
 
 loadTerm :: State -> String -> IO (State)
 loadTerm s@(np,pre,obj,pst,ctx,sup) ys
@@ -121,7 +121,7 @@ process s@(np,pre,obj,pst,ctx,sup) = do putStr $(show np) ++ ":"
                                           "E&e":t:"=>":ti -> (elimE 1 (int t) (unwords ti) s) >>= (\s -> process s)
                                           "E&d":t:"=>":ti -> (elimE 2 (int t) (unwords ti) s) >>= (\s -> process s)
                                           "Suponha:":t -> either (\_ -> putStrLn "Termo invalido. Digite um termo correto." >> process s)
-                                                                 (\(trm,nwpst) -> return (termCont [] trm) >>= (\(c,_) -> process (np,pre, obj, nwpst, ctx,sup++(map (\(a,b) -> (b,a) )c)) ))
+                                                                 (\(trm,nwpst) -> return (termCont [] trm) >>= (\c -> process (np,pre, obj, nwpst, ctx,sup++(map (\(a,b) -> (b,a) )c)) ))
                                                                  (runp (unwords t) pst)
                                           "E->":t1:t2:"=>":ti -> elimI (int t1) (int t2) (unwords ti) s >>= (\s -> process s)
                                           "I|e":t:"=>":ti -> intrO 1 (int t) (unwords ti) s >>= (\s -> process s)

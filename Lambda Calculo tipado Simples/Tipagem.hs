@@ -55,26 +55,26 @@ un b t s
   | b = return t
   | otherwise = throwError s
 
-termCont :: Contexto -> Term -> (Contexto, Term)
-termCont c a@((V v) ::: t) = ((v,t):c,a)
-termCont c (a@(V _)) = (c,a)
-termCont c (Snd a) = (x,Snd y)
+termCont :: Contexto -> Term -> Contexto
+termCont c a@((V v) ::: t) = (v,t):c
+termCont c (a@(V _)) = c
+termCont c (Snd a) = x
   where
     (x,y) = termCont c a
-termCont c (Fst a) = (x,Fst y)
+termCont c (Fst a) = x
   where
     (x,y) = termCont c a
-termCont c (a ::: t) = (x,y:::t)
+termCont c (a ::: t) = x
   where
      (x,y) = termCont c a
-termCont c (t1 :@: t2) = (w,y:@:z)
+termCont c (t1 :@: t2) = w
   where
      (x,y) = termCont c t1
      (w,z) = termCont x t2
-termCont c (t1 :*: t2) = (w,y:*:z)
+termCont c (t1 :*: t2) = w
   where
-     (x,y) = termCont c t1
-     (w,z) = termCont x t2
-termCont c (LamT v s t) = (x,LamT v s y)
+     x = termCont c t1
+     w = termCont x t2
+termCont c (LamT v s t) = x
   where
-     (x,y) = termCont c t
+     x = termCont c t
