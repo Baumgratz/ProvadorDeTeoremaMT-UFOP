@@ -35,13 +35,15 @@ curryTerm c (Fst t) = case curryTerm c t of
 curryTerm c (Snd t) = case curryTerm c t of
                             Right (p1 :&: p2) -> return p2
                             _ -> throwError "TIpo errado"
-curryTerm c (TEither (te1 ::: (a :|: b)) te2 te3) = case curryTerm c te2 of
-                                                      Right t1 -> case curryTerm c te3 of
-                                                                    Right t2 -> case (lastT t1 == (lastT t2)) of
-                                                                                  True -> return $ lastT t1
-                                                                                  False -> throwError "Error"
-                                                                    Left _ -> throwError "Tipo errado"
-                                                      Left _ -> throwError "tipo Errado"
+curryTerm c (TEither t@(te1 ::: (a :|: b)) te2 te3) = case curryTerm c t of
+                                                        Right _ -> case curryTerm c te2 of
+                                                                      Right t1@(x :>: y) -> case curryTerm c te3 of
+                                                                                    Right t2@(d :>: c) -> case (lastT t1 == (lastT t2)) && (a == x) && (b == d)  of
+                                                                                                  True -> return $ lastT t1
+                                                                                                  False -> throwError "Tipo incorreto"
+                                                                                    Left _ -> throwError "Tipo errado"
+                                                                      Left _ -> throwError "tipo Errado"
+                                                        Left _ -> throwError "Tipo incorreto"
 
 lastT :: Tipo -> Tipo
 lastT (t1 :>: t2) = lastT t2

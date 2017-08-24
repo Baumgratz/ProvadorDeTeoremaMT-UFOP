@@ -123,7 +123,7 @@ intrI :: Int -> Int -> String -> State -> IO State
 intrI p1 p2 ys s@(np,pre,obj,pst,ctx,sup) = do tipo <- newTipo ys
                                                case (tipo,t1) of
                                                  ((ti1 :>: ti2),(V a):::b) -> case curryTerm ctx (LamT a b t2 ::: tipo) of
-                                                                                Right _ -> return (delete (a,b) ctx) >>= (\c -> (putStrLn (show c) >> return (np+1,pre++[(LamT a b t2 ::: tipo)],obj,pst,c,sup-1)))
+                                                                                Right _ -> return (delete (a,b) ctx) >>= (\c -> return (np+1,pre++[(LamT a b t2 ::: tipo)],obj,pst,c,sup-1))
                                                                                 Left _ -> putStrLn "Não foi possível reduzir para o termo desejado" >> return s
                                                  _ -> return s
   where
